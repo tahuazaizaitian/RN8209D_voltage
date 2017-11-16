@@ -1,0 +1,10 @@
+".\Objects\STARTUP.obj",
+".\Objects\CPU_Init.obj",
+".\Objects\KeyBoard.obj",
+".\Objects\main.obj",
+".\Objects\TM1629A.obj",
+".\Objects\Display.obj",
+".\Objects\RN8209D.obj",
+".\Objects\UartDeal.obj" 
+TO ".\Objects\VoltageCurrent" 
+PRINT(".\Listings\VoltageCurrent.m51") RAMSIZE(256) 

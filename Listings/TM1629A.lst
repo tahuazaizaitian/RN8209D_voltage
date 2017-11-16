@@ -1,0 +1,292 @@
+C51 COMPILER V9.54   TM1629A                                                               11/16/2017 15:34:09 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE TM1629A
+OBJECT MODULE PLACED IN .\Objects\TM1629A.obj
+COMPILER INVOKED BY: F:\IDE\Keil_v5\C51\BIN\C51.EXE sources\TM1629A.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\includes) DEBUG 
+                    -OBJECTEXTEND PRINT(.\Listings\TM1629A.lst) OBJECT(.\Objects\TM1629A.obj)
+
+line level    source
+
+   1          //#define  _WordCode_GLOBALS
+   2          //#define  _DATA_MANAGE_GLOBALS
+   3          #define  _TM1629A_GLOBALS
+   4          #include "TM1629A.h"
+   5          #include "WordCode.h"
+   6          #include "DataManage.h"
+   7          #include "RN8209D.h"
+   8          void tm1629a_DIS_Open(void)
+   9          {
+  10   1          tm1629_STB=0;
+  11   1          tm1629aSendData(0x01|0x88);//亮度设置
+  12   1          tm1629_STB=1;
+  13   1      }
+  14          
+  15          void TM1629_OutByte(unsigned char dat)
+  16          {
+  17   1          unsigned char i;
+  18   1      
+  19   1          for(i=0; i<8; i++)
+  20   1          {
+  21   2              TM1629_CLK_LOW();
+  22   2              if((dat & 0x01) == 0x01)
+  23   2                  TM1629_DIO_HIGH();
+  24   2              else
+  25   2                  TM1629_DIO_LOW();
+  26   2              //nop();                                                                                        
+  27   2              TM1629_CLK_HIGH();                                                                                      
+  28   2              dat >>= 1;
+  29   2          }
+  30   1      }
+  31          
+  32          void TM1629_SendAddr(unsigned char addr)
+  33          {
+  34   1          TM1629_STB_HIGH();                                                                                  
+  35   1          TM1629_CLK_HIGH();
+  36   1      
+  37   1          TM1629_STB_LOW();                                                                                   
+  38   1          //nop();                                                                                                    
+  39   1          TM1629_OutByte(addr);
+  40   1      }
+  41          
+  42          /**********************************************************************
+  43          功能：数码管常显示
+  44          输入：
+  45          输出：无
+  46          ***********************************************************************/
+  47          void tm1629_DisAll(void)
+  48          {
+  49   1          tm1629_STB=0;
+  50   1      //      tm1629aSendData(0x44);//ÉèÖÃÊý¾ÝÃüÁîÐ´Êý¾Ý|µØÖ·×Ô¶¯Ôö¼Ó|Õý³£Ä£Ê½
+  51   1          tm1629aSendData(0x40);//设置数据命令写数据|地址自动增加|正常模式
+  52   1          tm1629_STB=1;
+  53   1      
+  54   1          tm1629_STB=0;
+C51 COMPILER V9.54   TM1629A                                                               11/16/2017 15:34:09 PAGE 2   
+
+  55   1          WICDisBuf();
+  56   1          tm1629_STB=1;
+  57   1      }
+  58          
+  59          /* 向指定起始显示寄存器写入数据块 */
+  60          void    TM1629_WriteBlock( unsigned char addr, unsigned char len, unsigned char* buf )
+  61          {
+  62   1          TM1629_SendAddr( addr );
+  63   1          while ( len -- ) TM1629_OutByte( *buf++ );
+  64   1          TM1629_STB_HIGH();
+  65   1      }
+  66          
+  67          /**********************************************************
+  68          共阴代码转换成共阳代码
+  69          pSrcBuf：存放共阴代码
+  70          pDstBuf：存放共阳代码
+  71          n：转换长度
+  72          **********************************************************/
+  73          //void convert1(unsigned char*pSrcBuf,unsigned char*pDstBuf,unsigned char n)
+  74          //{
+  75          //    unsigned char i,j,s,tmp,count,index;
+  76          
+  77          //    count = 0x01;
+  78          //    s=0x01;
+  79          //    for(i=0; i<n; i++)
+  80          //    {
+  81          //        tmp = *(pSrcBuf+i);    //转换第i个byte
+  82          //        for(j = 0; j<8; j++)
+  83          //        {
+  84          //            if(i<8) index = 2*j; //每一字节的8位都转换在不同的显示地址中
+  85          //                              else index=2*j+1;
+  86          //            if((tmp&count)==count)     *(pDstBuf+index) = *(pDstBuf+index) | (s);   //置1
+  87          //                              else pDstBuf[index] = *(pDstBuf+index) & (~s);                      //置0
+  88          //            if(count==0x80) count=0x01;
+  89          //                              else count <<= 1;
+  90          //        }
+  91          //        if(s==0x80) s=0x01;
+  92          //        else s <<= 1;
+  93          //    }
+  94          //}
+  95          
+  96          /***********************************************************************
+  97          功能：逐个点亮数码管
+  98          输入：
+  99          输出：无
+ 100          ***********************************************************************/
+ 101          void WICDisBuf(void)
+ 102          {
+ 103   1          /*u8 i;
+ 104   1      
+ 105   1          switch (DspBit)
+ 106   1              {
+ 107   1                      //ÊýÂë¹Ü
+ 108   1                      case 1: //ÏÔÊ¾µÚÒ»¸öÊýÂë¹Ü
+ 109   1                              tm1629_STR=0;
+ 110   1                      tm1629aSendData(0xc9);//µÚ9 11 13 15 ¸öÏÔ´æµØÖ· ¶ÔÓ¦ÊýÂë¹Ü  8  9  10  11
+ 111   1                      tm1629aSendData(SMGmap[SMGBuf[2]]); //³ýÈ¥×îµÍÎ»ÔÙÐ´
+ 112   1                      tm1629_STR=1;
+ 113   1                      tm1629_STR=0;
+ 114   1                      tm1629aSendData(0xcb);//µÚ9 11 13 15 ¸öÏÔ´æµØÖ· ¶ÔÓ¦ÊýÂë¹Ü  8  9  10  11
+ 115   1                      tm1629aSendData(SMGmap[SMGBuf[3]]); //³ýÈ¥×îµÍÎ»ÔÙÐ´
+ 116   1                      tm1629_STR=1;
+C51 COMPILER V9.54   TM1629A                                                               11/16/2017 15:34:09 PAGE 3   
+
+ 117   1                      tm1629_STR=0;
+ 118   1                      tm1629aSendData(0xcd);//µÚ9 11 13 15 ¸öÏÔ´æµØÖ· ¶ÔÓ¦ÊýÂë¹Ü  8  9  10  11
+ 119   1                      tm1629aSendData(SMGmap[SMGBuf[1]]); //³ýÈ¥×îµÍÎ»ÔÙÐ´
+ 120   1                      tm1629_STR=1;
+ 121   1                      tm1629_STR=0;
+ 122   1                      tm1629aSendData(0xcf);//µÚ9 11 13 15 ¸öÏÔ´æµØÖ· ¶ÔÓ¦ÊýÂë¹Ü  8  9  10  11
+ 123   1                      tm1629aSendData(SMGmap[SMGBuf[0]]); //³ýÈ¥×îµÍÎ»ÔÙÐ´
+ 124   1                      tm1629_STR=1;
+ 125   1                      break;
+ 126   1              case 2: //ÏÔÊ¾µÚÒ»¸öÊýÂë¹Ü
+ 127   1                              for (i=4;i<8;i++)
+ 128   1                      {
+ 129   1                              tm1629_STR=0;
+ 130   1                              tm1629aSendData(0xc0|(((i-4)<<1)+1));//µÚ1 3 5 7 ¸öÏÔ´æµØ
+ 131   1                              tm1629aSendData(SMGmap[SMGBuf[i]]); //³ýÈ¥×îµÍÎ»ÔÙÐ´
+ 132   1                              tm1629_STR=1;
+ 133   1                      }
+ 134   1                      break;
+ 135   1              case 3: //ÏÔÊ¾µÚÒ»¸öÊýÂë¹Ü
+ 136   1                              for (i=8;i<12;i++)
+ 137   1                      {
+ 138   1                              tm1629_STR=0;
+ 139   1                              tm1629aSendData(0xc0|(i-8)<<1);//µÚ0 2 4 6 8 10 12 14 ¸öÏÔ´æµØÖ· ¼ûdatasheet ×óÒÆ
+             -Ò»Î»Ïàµ±ÓÚ³Ë2
+ 140   1                              tm1629aSendData(SMGmap[SMGBuf[i]]);//×éºÏµ±Ç°Êý¾ÝºÍ¶ÔÓ¦Êý¾Ý£¬×î¸ßÎ»»
+             -»Îª¶ÔÓ¦Êý¾ÝµÄµÄ×îµÍÎ»¡£
+ 141   1                              tm1629_STR=1;
+ 142   1                      }
+ 143   1                      break;
+ 144   1              case 4: //ÏÔÊ¾µÚÒ»¸öÊýÂë¹Ü
+ 145   1                      tm1629_STR=0;
+ 146   1                      tm1629aSendData(0xc8);//µÚ9 11 13 15 ¸öÏÔ´æµØÖ· ¶ÔÓ¦ÊýÂë¹Ü  8  9  10  11
+ 147   1                      tm1629aSendData(LED1Buf); //³ýÈ¥×îµÍÎ»ÔÙÐ´
+ 148   1                      tm1629_STR=1;
+ 149   1                      tm1629_STR=0;
+ 150   1                      tm1629aSendData(0xca);//µÚ9 11 13 15 ¸öÏÔ´æµØÖ· ¶ÔÓ¦ÊýÂë¹Ü  8  9  10  11
+ 151   1                      tm1629aSendData(LED0Buf); //³ýÈ¥×îµÍÎ»ÔÙÐ´
+ 152   1                      tm1629_STR=1;
+ 153   1              break;
+ 154   1                      default:
+ 155   1                      DspBit = 0;
+ 156   1              break;
+ 157   1          }
+ 158   1          DspBit++;
+ 159   1      
+ 160   1          */
+ 161   1              u8 i,j;
+ 162   1              u8 temp;
+ 163   1          unsigned char BUF[18]= {0xfF,0xff,0xff,0xfF,0xff,0xfF,0xff,0xff,0xff,
+ 164   1                                  0xfF,0xff,0xff,0xfF,0xff,0xff,0xff,0xff,0xff
+ 165   1                                 };
+ 166   1          unsigned char BUF1[18]=     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+ 167   1      
+ 168   1          BUF[0]=SMGmap[SMGBuf[8]];
+ 169   1          BUF[1]=SMGmap[SMGBuf[0]];
+ 170   1          BUF[2]=SMGmap[SMGBuf[9]];
+ 171   1          BUF[3]=SMGmap[SMGBuf[1]];
+ 172   1      
+ 173   1          BUF[4]=SMGmap[SMGBuf[10]];
+ 174   1          BUF[5]=SMGmap[SMGBuf[2]];
+ 175   1          BUF[6]=SMGmap[SMGBuf[11]];
+ 176   1          BUF[7]=SMGmap[SMGBuf[3]];
+C51 COMPILER V9.54   TM1629A                                                               11/16/2017 15:34:09 PAGE 4   
+
+ 177   1      
+ 178   1          BUF[8]=SMGmap[SMGBuf[4]];
+ 179   1          BUF[9]=SMGmap[0x37];
+ 180   1          BUF[10]=SMGmap[SMGBuf[5]];
+ 181   1          BUF[11]=SMGmap[0x37];
+ 182   1              BUF[12]=SMGmap[SMGBuf[6]];
+ 183   1          BUF[13]=SMGmap[0x37];
+ 184   1              BUF[14]=SMGmap[SMGBuf[7]];
+ 185   1          BUF[15]=SMGmap[0x37];
+ 186   1              
+ 187   1              for(i=0;i<16;i++){
+ 188   2                      temp = 0;
+ 189   2                      for(j=0;j<8;j++){
+ 190   3                              temp = temp<<1;
+ 191   3                              if(BUF[i]&0x01) temp |=0x01;
+ 192   3                                      else;
+ 193   3                              BUF[i] = BUF[i]>>1;
+ 194   3                      }
+ 195   2                      BUF[i] = temp;
+ 196   2              }
+ 197   1              
+ 198   1              
+ 199   1      //    BUF[12]=LED0Buf;
+ 200   1      //    BUF[13]=LED1Buf;
+ 201   1      
+ 202   1      
+ 203   1      //    convert1(BUF,BUF1,16);//共阳转共阴
+ 204   1      
+ 205   1          TM1629_WriteBlock(0xc0,16,BUF);
+ 206   1      }
+ 207          
+ 208          /**********************************************************************
+ 209          功能：向TM1629A芯片写入一个命令字
+ 210          输入：
+ 211          输出：无
+ 212          ***********************************************************************/
+ 213          void tm1629aSendData(u8 a)
+ 214          {
+ 215   1          u8 i;
+ 216   1          for(i=0; i<8; i++)
+ 217   1          {
+ 218   2              tm1629_CLK=0;
+ 219   2              tm1629_DATA=(a&0x01==1)?1:0;
+ 220   2              a>>=1;
+ 221   2              tm1629_CLK=1;
+ 222   2          }
+ 223   1      }
+ 224          
+ 225          //在特定行显示数值，0~999
+ 226          void SEG_LINE(u16 Data,u8 Line){
+ 227   1              u8 temp;
+ 228   1              temp = Line*4;
+ 229   1      //      if(SetJM==1){
+ 230   1      //              if(Data >999)
+ 231   1      //                      SMGBuf[temp] = Data/1000;
+ 232   1      //              else
+ 233   1      //                      SMGBuf[temp] = 0x37;
+ 234   1      //      }
+ 235   1      //      else
+ 236   1              SMGBuf[temp] = Data/1000;
+ 237   1              SMGBuf[temp+1] = Data/100%10;
+ 238   1              SMGBuf[temp+2] = Data/10%10;
+C51 COMPILER V9.54   TM1629A                                                               11/16/2017 15:34:09 PAGE 5   
+
+ 239   1              SMGBuf[temp+3] = Data%10;
+ 240   1      }
+ 241          
+ 242          
+ 243          //在特定行显示字符
+ 244          void WORD_LINE(u8 *word,u8 Line){
+ 245   1              u8 temp;
+ 246   1              temp = Line*4;
+ 247   1              SMGBuf[temp] = *word;
+ 248   1              SMGBuf[temp+1] = *(word+1);
+ 249   1              SMGBuf[temp+2] = *(word+2);
+ 250   1              SMGBuf[temp+3] = *(word+3);
+ 251   1      }
+ 252          
+ 253          //获取特定行整数值
+ 254          int GET_NUM_LINE(u8 Line){
+ 255   1              u16 temp;
+ 256   1              temp = SMGBuf[Line*4]*1000 + SMGBuf[Line*4+1]*100 + SMGBuf[Line*4+2]*10 + SMGBuf[Line*4+3];
+ 257   1              return temp;
+ 258   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    670    ----
+   CONSTANT SIZE    =     36    ----
+   XDATA SIZE       =      1    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      41
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

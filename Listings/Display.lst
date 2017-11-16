@@ -1,0 +1,146 @@
+C51 COMPILER V9.54   DISPLAY                                                               11/16/2017 15:34:09 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE DISPLAY
+OBJECT MODULE PLACED IN .\Objects\Display.obj
+COMPILER INVOKED BY: F:\IDE\Keil_v5\C51\BIN\C51.EXE sources\Display.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\includes) DEBUG 
+                    -OBJECTEXTEND PRINT(.\Listings\Display.lst) OBJECT(.\Objects\Display.obj)
+
+line level    source
+
+   1          #define _Display_GLOBALS
+   2          #define _DataChange_GLOBALS
+   3          
+   4          #include "Display.h"
+   5          #include "DataManage.h"
+   6          #include "TM1629A.h"
+   7          #include "RN8209D.h"
+   8          #include "UartDeal.h"
+   9          #include "DataChange.h"
+  10          #include "CPU_Init.h"
+  11          
+  12          
+  13          void Display_U(void){
+  14   1              
+  15   1      }
+  16          
+  17          
+  18          void Display_I(void){
+  19   1              u32 temp_IA = 0;
+  20   1              if(Display_100ms){
+  21   2                      Display_100ms = 0;
+  22   2                      if(SetJM == 1){
+  23   3                              WriteToDisp(All_data.current[0].fdata32,0,&SMGBuf[0]);
+  24   3                              
+  25   3                      }
+  26   2              }
+  27   1      }
+  28          
+  29          /**********************************************************************
+  30          功能：显示数值转换函数
+  31          输入：
+  32                  intData：数据
+  33                  DecBit：0：显示3位小数
+  34                                  1：显示2位小数
+  35                                  2：显示1位小数
+  36                                  3：不显示小数
+  37                  *buf：缓存指针
+  38          ***********************************************************************/
+  39          void WriteToDisp(u16 intData,u8 DecBit,u8 *buf)
+  40          {
+  41   1              u8 i;
+  42   1              if (DecBit == 0) //显示3位小数
+  43   1              {
+  44   2                      for(i=0;i<4;i++)
+  45   2                      {
+  46   3                              *(buf+3-i) = (intData%10);         
+  47   3                              if(DecBit == 3-i)
+  48   3                                      *(buf+3-i) = (intData%10)+0x10;             
+  49   3                              intData /= 10;
+  50   3                      }         
+  51   2              }
+  52   1              else if (DecBit == 1) //显示2位小数
+  53   1              {
+  54   2                      for(i=0;i<3;i++)
+C51 COMPILER V9.54   DISPLAY                                                               11/16/2017 15:34:09 PAGE 2   
+
+  55   2                      {
+  56   3                              *(buf+3-i) = intData%10;         
+  57   3                              if(DecBit == 3-i)
+  58   3                                      *(buf+3-i) = intData%10+0x10;             
+  59   3                              intData /= 10;
+  60   3                      }    
+  61   2                      if (intData == 0) //intData <= 999      
+  62   2                              *buf = 0x37; //Ö±½ÓÃðÁã
+  63   2                      else 
+  64   2                              *buf = intData%10;       
+  65   2                      }
+  66   1              else if (DecBit == 2) //显示1位小数
+  67   1              {
+  68   2                      for(i=0;i<2;i++)
+  69   2                      {
+  70   3                              *(buf+3-i) = intData%10;         
+  71   3                              if(DecBit == 3-i)
+  72   3                                      *(buf+3-i) = intData%10+0x10;             
+  73   3                              intData /= 10;
+  74   3                      }    
+  75   2                      if (intData == 0) //intData <= 99
+  76   2                      {
+  77   3                              *(buf+1) = 0x37; //Ö±½ÓÃðÁã
+  78   3                              *buf = 0x37; //Ö±½ÓÃðÁã            
+  79   3                      }
+  80   2                      else 
+  81   2                      {
+  82   3                              *(buf+1) = intData%10;
+  83   3                              intData /= 10;
+  84   3                              if (intData == 0)
+  85   3                                      *buf = 0x37; //Ö±½ÓÃðÁã            
+  86   3                              else 
+  87   3                                      *buf = intData%10;       
+  88   3                      }
+  89   2              }
+  90   1              else if (DecBit == 3)//不显示小数
+  91   1              {
+  92   2                      for(i=0;i<4;i++) //×¨ÎªÏÔÊ¾¹¦ÂÊÒòÊýÉè¼Æ
+  93   2                      {
+  94   3                              *(buf+3-i) = intData%10;         
+  95   3                              intData /= 10;
+  96   3                      }               
+  97   2      
+  98   2              }
+  99   1              else if (DecBit == 4) //×¨ÎªÏÔÊ¾¹¦ÂÊÒòÊýÉè¼Æ
+ 100   1              {
+ 101   2                      for(i=0;i<3;i++) 
+ 102   2                      {
+ 103   3                              *(buf+3-i) = intData%10;         
+ 104   3                              intData /= 10;
+ 105   3                      }               
+ 106   2              }
+ 107   1              else if (DecBit == 5) //×¨ÎªÏÔÊ¾ÄÜÁ¿Éè¼Æ
+ 108   1              {
+ 109   2                      for(i=0;i<4;i++)
+ 110   2                      {
+ 111   3                              *(buf+3-i) = intData%10;         
+ 112   3                              if(DecBit == 7-i)
+ 113   3                                      *(buf+3-i) = intData%10+0x10; //ÏÖÊµÁ½Î»Ð¡Êý             
+ 114   3                              intData /= 10;
+ 115   3                      }         
+ 116   2              }
+C51 COMPILER V9.54   DISPLAY                                                               11/16/2017 15:34:09 PAGE 3   
+
+ 117   1      }
+ 118          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    797    ----
+   CONSTANT SIZE    =     28    ----
+   XDATA SIZE       =    162    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      11
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

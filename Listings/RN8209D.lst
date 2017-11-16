@@ -1,0 +1,288 @@
+C51 COMPILER V9.54   RN8209D                                                               11/16/2017 15:34:09 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE RN8209D
+OBJECT MODULE PLACED IN .\Objects\RN8209D.obj
+COMPILER INVOKED BY: F:\IDE\Keil_v5\C51\BIN\C51.EXE sources\RN8209D.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\includes) DEBUG 
+                    -OBJECTEXTEND PRINT(.\Listings\RN8209D.lst) OBJECT(.\Objects\RN8209D.obj)
+
+line level    source
+
+   1          #define _RN8209D_GLOBALS
+   2          #include "RN8209D.h"
+   3          #include <intrins.h> 
+   4          #include "CPU_Init.h"
+   5          #include "TM1629A.h"
+   6          #include "DataChange.h"
+   7          #include "DataManage.h"
+   8          #include "Display.h"
+   9          //RN8209D初始化
+  10          void RN8209D_Init(void){
+  11   1              //软复位
+  12   1              Write_RN8209D_Command(0xEA);
+  13   1              Write_RN8209D_DATA(0xFA);
+  14   1              
+  15   1              //写使能命令
+  16   1              Write_RN8209D_Command(0xEA);
+  17   1              Write_RN8209D_DATA(0xE5);
+  18   1              
+  19   1              //功率及有效值寄存器更新频率设为13.982Hz
+  20   1              Write_RN8209D_Command(CMD_RN8209D_EMUCON2);
+  21   1              Write_RN8209D_DATA(0x00);
+  22   1              Write_RN8209D_DATA(0x80);
+  23   1              
+  24   1              //数据更新时，中断标志位开启(0:DUPDIE)
+  25   1              Write_RN8209D_Command(CMD_RN8209D_IEReg);
+  26   1              Write_RN8209D_DATA(0x01);
+  27   1              
+  28   1              //步骤1：B通道打开，增益全部设为1
+  29   1              Write_RN8209D_Command(CMD_RN8209D_SYSCON);
+  30   1              Write_RN8209D_DATA(0x00);//高字节：0x00   低字节：0b0100 0000
+  31   1              Write_RN8209D_DATA(0x40);
+  32   1              
+  33   1              //步骤1：关闭IA通道数字高通滤波器，关闭U通道数字高通滤波器
+  34   1              Write_RN8209D_Command(CMD_RN8209D_EMUCON);
+  35   1              Write_RN8209D_DATA(0x40);
+  36   1              Write_RN8209D_DATA(0x60);
+  37   1              
+  38   1              //步骤2：直流offset校正
+  39   1              DCL_OFFSET(CMD_RN8209D_IARms);
+  40   1              
+  41   1              //步骤3：有效值Offset补偿
+  42   1              IRMS_OFFSET(CMD_RN8209D_IARms);
+  43   1              
+  44   1              
+  45   1      //      SEG_LINE(temp_IRMSOS>>8,0);
+  46   1      //      SEG_LINE(temp_IRMSOS&0xff,1);
+  47   1      }
+  48          
+  49          //写命令寄存器，输入地址
+  50          void Write_RN8209D_Command(u8 addr){
+  51   1              u8 i;
+  52   1              u8 temp;
+  53   1              temp = addr|0x80;//最高位为1
+  54   1              RN8209D_SCSN_HIGH();
+C51 COMPILER V9.54   RN8209D                                                               11/16/2017 15:34:09 PAGE 2   
+
+  55   1              RN8209D_SCLK_HIGH();
+  56   1              RN8209D_SCSN_LOW();
+  57   1              for(i=0;i<8;i++){
+  58   2      //              Delay1ms();
+  59   2                      if((temp&0x80)==0x80)
+  60   2                              RN8209D_SDO_HIGH();
+  61   2                      else
+  62   2                              RN8209D_SDO_LOW();
+  63   2                      RN8209D_SCLK_HIGH();
+  64   2      //              Delay1ms();
+  65   2                      RN8209D_SCLK_LOW();
+  66   2                      temp = temp << 1;
+  67   2              }
+  68   1              RN8209D_SCSN_LOW();
+  69   1      }
+  70          
+  71          //写读寄存器，输入地址
+  72          void Read_RN8209D_Command(u8 addr){
+  73   1              u8 i;
+  74   1              u8 temp;
+  75   1              temp = addr & 0xef;//最高位为0
+  76   1              RN8209D_SCSN_HIGH();
+  77   1              RN8209D_SCLK_HIGH();
+  78   1              RN8209D_SCSN_LOW();
+  79   1              for(i=0;i<8;i++){
+  80   2      //              Delay1ms();
+  81   2                      if((temp&0x80)==0x80)
+  82   2                              RN8209D_SDO_HIGH();
+  83   2                      else
+  84   2                              RN8209D_SDO_LOW();
+  85   2                      RN8209D_SCLK_HIGH();
+  86   2                      RN8209D_SCLK_LOW();
+  87   2                      temp = temp<< 1;
+  88   2              }
+  89   1      }
+  90          
+  91          //写数据
+  92          void Write_RN8209D_DATA(u8 dat){
+  93   1              u8 i;
+  94   1              for(i=0;i<8;i++){
+  95   2      //              Delay1ms();
+  96   2                      if((dat&0x80)==0x80)
+  97   2                              RN8209D_SDO_HIGH();
+  98   2                      else
+  99   2                              RN8209D_SDO_LOW();
+ 100   2                      RN8209D_SCLK_HIGH();
+ 101   2      //              Delay1ms();
+ 102   2                      RN8209D_SCLK_LOW();
+ 103   2                      dat = dat<< 1;
+ 104   2              }
+ 105   1      //      Delay1ms();
+ 106   1      }
+ 107          
+ 108          //读数据,读一个字节
+ 109          u8 Read_RN8209D_DATA(void){
+ 110   1              u8 i;
+ 111   1              u8 temp;
+ 112   1              temp = 0;
+ 113   1              for(i=0;i<8;i++){
+ 114   2                      temp = temp << 1;
+ 115   2      //              Delay1ms();
+ 116   2                      RN8209D_SCLK_HIGH();
+C51 COMPILER V9.54   RN8209D                                                               11/16/2017 15:34:09 PAGE 3   
+
+ 117   2      //              Delay1ms();
+ 118   2                      RN8209D_SCLK_LOW();
+ 119   2                      if(RN8209D_SDI)
+ 120   2                              temp = temp | 0x01;
+ 121   2              }
+ 122   1      //      Delay1ms();
+ 123   1              return temp;
+ 124   1      }
+ 125          
+ 126          //读有效值，输入地址
+ 127          u32 Read_IRMS(u8 addr){
+ 128   1              u32 temp;
+ 129   1              u32 temp_H;
+ 130   1              u32 temp_N;
+ 131   1              u32 temp_L;
+ 132   1              Read_RN8209D_Command(addr);
+ 133   1              temp_H = Read_RN8209D_DATA();
+ 134   1              temp_N = Read_RN8209D_DATA();
+ 135   1              temp_L = Read_RN8209D_DATA();
+ 136   1              temp = (temp_H<<16) + (temp_N<<8) + temp_L;
+ 137   1              return temp;
+ 138   1      }
+ 139          
+ 140          //获得十次有效值，并计算平均值
+ 141          u32 get_ten_ave_IAMS(u8 addr){
+ 142   1              u8 i;
+ 143   1              u32 temp;
+ 144   1              temp = 0;
+ 145   1              for(i=0;i<10;i++){
+ 146   2                      while(!(Read_RN8209D_DATA()&0x01))
+ 147   2                              Read_RN8209D_Command(CMD_RN8209D_IEF);
+ 148   2                      temp = temp + Read_IRMS(addr);
+ 149   2                      Delay5ms();
+ 150   2              }
+ 151   1              temp = temp/10;         //求平均值
+ 152   1              return temp;
+ 153   1      }
+ 154          
+ 155          //DC_OFFSET校正
+ 156          void DCL_OFFSET(u8 addr){
+ 157   1              u16 i;
+ 158   1              u32 IARMS_ave_first;
+ 159   1              u32 IARMS_ave_second;
+ 160   1              IARMS_ave_first = get_ten_ave_IAMS(addr);
+ 161   1              //1第一次写入
+ 162   1              Write_RN8209D_Command(CMD_RN8209D_DCIAH);
+ 163   1              Write_RN8209D_DATA(IARMS_ave_first>>16);
+ 164   1              Write_RN8209D_DATA((IARMS_ave_first>>8)&0xff);
+ 165   1              
+ 166   1              Write_RN8209D_Command(CMD_RN8209D_DCL);
+ 167   1              Write_RN8209D_DATA((IARMS_ave_first>>4)&0x0f);
+ 168   1              
+ 169   1              //2s delay
+ 170   1              for(i=0;i<400;i++)      Delay5ms();
+ 171   1              
+ 172   1              //2验证
+ 173   1              IARMS_ave_second = get_ten_ave_IAMS(addr);
+ 174   1              if(IARMS_ave_first>IARMS_ave_second);
+ 175   1              else{
+ 176   2                      IARMS_ave_first = ~IARMS_ave_first;
+ 177   2                      Write_RN8209D_Command(CMD_RN8209D_DCIAH);
+ 178   2                      Write_RN8209D_DATA(IARMS_ave_first>>16);
+C51 COMPILER V9.54   RN8209D                                                               11/16/2017 15:34:09 PAGE 4   
+
+ 179   2                      Write_RN8209D_DATA((IARMS_ave_first>>8)&0xff);
+ 180   2                      
+ 181   2                      Write_RN8209D_Command(CMD_RN8209D_DCL);
+ 182   2                      Write_RN8209D_DATA((IARMS_ave_first>>4)&0x0f);
+ 183   2              }
+ 184   1      }
+ 185          
+ 186          //校正IARMS寄存器
+ 187          void IRMS_OFFSET(u8 addr){
+ 188   1              u32 temp;       //存放返回值
+ 189   1              u32 Iave;
+ 190   1              temp = 0;
+ 191   1              Iave = 0;
+ 192   1      
+ 193   1              Iave = get_ten_ave_IAMS(addr);          //求平均值
+ 194   1              
+ 195   1      //      WriteToDisp(Iave>>16,3,&SMGBuf[0]);
+ 196   1      //      WriteToDisp((Iave>>8)&0xff,3,&SMGBuf[1]);
+ 197   1      //      WriteToDisp(Iave&0xff,3,&SMGBuf[2]);
+ 198   1              Iave = Iave*Iave;       //求平方
+ 199   1              Iave = ~Iave;           //求反码
+ 200   1              temp = (u16)(Iave>>8);
+ 201   1              Write_RN8209D_Command(CMD_RN8209D_IARMSOS);
+ 202   1              Write_RN8209D_DATA(temp>>8);
+ 203   1              Write_RN8209D_DATA(temp&0xff);
+ 204   1      }
+ 205          
+ 206          //周期获得采样值
+ 207          void Get_IRMS(void){
+ 208   1              u8 i;
+ 209   1              u32 temp_IARMS = 0;
+ 210   1              u32 IA_SUM = 0;
+ 211   1              float f32;
+ 212   1              if(Sample_25){
+ 213   2                      Sample_25 = 0;  //清楚标志位
+ 214   2                      Read_RN8209D_Command(CMD_RN8209D_IEF);
+ 215   2                      if(Read_RN8209D_DATA()&0x01){
+ 216   3                              temp_IARMS = Read_IRMS(CMD_RN8209D_IARms);
+ 217   3                              //test
+ 218   3      //                      WriteToDisp(temp_IARMS>>16,3,&SMGBuf[0]);
+ 219   3      //                      WriteToDisp((temp_IARMS>>8)&0xff,3,&SMGBuf[4]);
+ 220   3      //                      WriteToDisp(temp_IARMS&0xff,3,&SMGBuf[8]);
+ 221   3                              
+ 222   3                              IABUF[IARMS_Counter] = temp_IARMS;
+ 223   3                              IARMS_Counter ++;
+ 224   3                              if(IARMS_Counter > 9){
+ 225   4                                      IARMS_Counter = 0;
+ 226   4      //                              bubble_sort(&IABUF[0],10);
+ 227   4                                      for(i=2;i<8;i++){
+ 228   5                                              IA_SUM = IA_SUM + IABUF[i];
+ 229   5                                      }
+ 230   4                                      VITempData.Tcurrent[0].data32 = IA_SUM/6;
+ 231   4                              }
+ 232   3                              f32 = ((float)(VITempData.Tcurrent[0].data32)*1.147/10000);//128
+ 233   3                              All_data.current[0].fdata32 = f32;
+ 234   3                      }
+ 235   2              }
+ 236   1      }
+ 237          
+ 238          //冒泡排序
+ 239          void bubble_sort(u32 *array,u16 num)
+ 240          {
+C51 COMPILER V9.54   RN8209D                                                               11/16/2017 15:34:09 PAGE 5   
+
+ 241   1              u16 i = 0;
+ 242   1              u16 j = 0;
+ 243   1              u16 temp;
+ 244   1              for(;j < num;++j)
+ 245   1              {
+ 246   2                      for(i= num;i >j ;--i)
+ 247   2                      {
+ 248   3                              if(array[i] < array[i-1])
+ 249   3                              {
+ 250   4                                      temp =array[i];
+ 251   4                                      array[i] = array[i-1];
+ 252   4                                      array[i-1] = temp;
+ 253   4                              }
+ 254   3                      }
+ 255   2              }
+ 256   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1163    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      48
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
